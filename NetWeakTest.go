@@ -91,11 +91,23 @@ func main() {
 		}(ctx, nodeName, nodePid, *options, *sleepTime)
 	}
 
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	sig := <-sigs
-	log.Info("收到信号:", sig)
 
-	cancel()
-	wg.Wait()
+	select {
+	case <-done:
+		log.Info("something went wrong")
+	case sig := <-sigs:
+		log.Info("receive signal:", sig)
+		cancel()
+		wg.Wait()
+	}
+
+	close(sigs)
 }
