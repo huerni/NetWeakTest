@@ -76,8 +76,6 @@ func main() {
 		return
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-
 	args := flag.Args()
 	if len(args) == 0 {
 		args = []string{"bash"}
