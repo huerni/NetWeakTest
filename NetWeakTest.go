@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
 	"strings"
 	"sync"
@@ -21,6 +22,7 @@ func main() {
 	options := flag.String("options", "", "input options")
 	sleepTime := flag.Duration("T", 30, "input time")
 	logLevel := flag.String("L", "info", "log level")
+	mininetOption := flag.String("type", "", "mininet option")
 
 	flag.Parse()
 
@@ -38,6 +40,43 @@ func main() {
 		flag.Usage()
 		os.Exit(1)
 	}
+
+	if *mininetOption == "reset" {
+		for _, nodeName := range nodeList {
+			nodePid, err := util.GetPidWithNodeName2(nodeName)
+			if err != nil {
+				log.Errorf("[%s] %s", nodeName, err.Error())
+				return
+			}
+			cmdStr := fmt.Sprintf("mnexec -a %s tc qdisc del dev %s-eth0", nodePid, nodeName)
+			err = util.ExecBashCmd(cmdStr)
+			if err != nil {
+				log.Errorf("[%s] %s", nodeName, err.Error())
+				return
+			}
+			log.Infof("[%s] Network weak stopped", nodeName)
+		}
+		return
+	} else if *mininetOption == "show" {
+		for _, nodeName := range nodeList {
+			nodePid, err := util.GetPidWithNodeName2(nodeName)
+			if err != nil {
+				log.Errorf("[%s] %s", nodeName, err.Error())
+				return
+			}
+			cmdStr := fmt.Sprintf("mnexec -a %s tc qdisc show dev %s-eth0", nodePid, nodeName)
+			cmd := exec.Command("bash", "-c", cmdStr)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				log.Errorf("[%s] exec bash cmd error %s: %s", nodeName, err.Error(), string(output))
+				return
+			}
+			log.Info(string(output))
+		}
+		return
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
 
 	args := flag.Args()
 	if len(args) == 0 {
@@ -105,13 +144,6 @@ func main() {
 							log.Errorf("[%s] %s", nodeName, err.Error())
 						}
 					}
-
-					//select {
-					//case <-ctx.Done():
-					//	log.Infof("[%s] Network weak stopping...", nodeName)
-					//	return
-					//case <-time.After(sleepTime * time.Second):
-					//}
 				}
 			}
 

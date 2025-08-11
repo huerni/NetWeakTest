@@ -62,6 +62,21 @@ func GetPidWithNodeName(ctx context.Context, nodeName string) (string, error) {
 	}
 }
 
+func GetPidWithNodeName2(nodeName string) (string, error) {
+	cmdStr := fmt.Sprintf("pgrep -f [m]ininet:%s | head -n 1", nodeName)
+	out, err := exec.Command("bash", "-c", cmdStr).Output()
+	if err != nil {
+		return "", err
+	}
+	pid := strings.TrimSpace(string(out))
+	if pid == "" {
+		return "", fmt.Errorf("%s is not running", nodeName)
+	}
+
+	log.Debugf("node: %s, pid: %s", nodeName, pid)
+	return pid, nil
+}
+
 func GetPidWithNodeNames(ctx context.Context, nodeNames []string) (map[string]string, error) {
 	nodePidMap := make(map[string]string)
 	remaining := make(map[string]struct{})
