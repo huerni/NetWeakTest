@@ -62,14 +62,14 @@ func main() {
 			nodePid, err := util.GetPidWithNodeName2(nodeName)
 			if err != nil {
 				log.Errorf("[%s] %s", nodeName, err.Error())
-				return
+				continue
 			}
 			cmdStr := fmt.Sprintf("mnexec -a %s tc qdisc show dev %s-eth0", nodePid, nodeName)
 			cmd := exec.Command("bash", "-c", cmdStr)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				log.Errorf("[%s] exec bash cmd error %s: %s", nodeName, err.Error(), string(output))
-				return
+				continue
 			}
 			log.Infof("[%s] %s", nodeName, string(output))
 		}
