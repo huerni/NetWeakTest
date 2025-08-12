@@ -71,7 +71,7 @@ func main() {
 				log.Errorf("[%s] exec bash cmd error %s: %s", nodeName, err.Error(), string(output))
 				return
 			}
-			log.Info(string(output))
+			log.Infof("[%s] %s", nodeName, string(output))
 		}
 		return
 	}

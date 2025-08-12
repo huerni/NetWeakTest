@@ -126,7 +126,7 @@ func GenNetemParam(option string) string {
 		ms := rand.Intn(500) + 1 // 1~500ms
 		return fmt.Sprintf("%s %dms 10ms", option, ms)
 	case "loss":
-		percent := rand.Intn(100) + 1 // 1~100%
+		percent := rand.Intn(5) + 1 // 1~100%
 		return fmt.Sprintf("%s %d%%", option, percent)
 	case "corrupt":
 		percent := rand.Intn(10) + 1 // 1~10%
@@ -135,7 +135,7 @@ func GenNetemParam(option string) string {
 		percent := rand.Intn(10) + 1 // 1~10%
 		return fmt.Sprintf("%s %d%%", option, percent)
 	case "reorder":
-		percent := rand.Intn(100) + 1 // 1~100%
+		percent := rand.Intn(5) + 1 // 1~100%
 		return fmt.Sprintf("%s %d%%", option, percent)
 	case "rate":
 		rates := []string{"1mbit", "5mbit", "10mbit", "100kbit"}
@@ -150,7 +150,7 @@ func GenNetemParam(option string) string {
 func GetRandomOption() string {
 	rand.Seed(time.Now().UnixNano())
 
-	options := []string{"limit", "delay", "loss", "corrupt", "duplicate", "rate"}
+	options := []string{"limit", "delay", "loss", "rate", "reorder", "duplicate", "corrupt"}
 	n := len(options)
 	shuffled := make([]string, n)
 	copy(shuffled, options)
