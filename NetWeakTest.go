@@ -4,9 +4,7 @@ import (
 	"CraneNetWeak/util"
 	"context"
 	"flag"
-	"fmt"
 	"os"
-	"os/exec"
 	"os/signal"
 	"strings"
 	"sync"
@@ -48,10 +46,9 @@ func main() {
 				log.Errorf("[%s] %s", nodeName, err.Error())
 				return
 			}
-			cmdStr := fmt.Sprintf("mnexec -a %s tc qdisc del dev %s-eth0", nodePid, nodeName)
-			err = util.ExecBashCmd(cmdStr)
+			err, output := util.ExecDelCmd(nodePid, nodeName)
 			if err != nil {
-				log.Errorf("[%s] %s", nodeName, err.Error())
+				log.Errorf("[%s] %s, cmd output: ", nodeName, err.Error(), output)
 				return
 			}
 			log.Infof("[%s] Network weak stopped", nodeName)
@@ -64,14 +61,13 @@ func main() {
 				log.Errorf("[%s] %s", nodeName, err.Error())
 				continue
 			}
-			cmdStr := fmt.Sprintf("mnexec -a %s tc qdisc show dev %s-eth0", nodePid, nodeName)
-			cmd := exec.Command("bash", "-c", cmdStr)
-			output, err := cmd.CombinedOutput()
+
+			err, output := util.ExecShowCmd(nodePid, nodeName)
 			if err != nil {
-				log.Errorf("[%s] exec bash cmd error %s: %s", nodeName, err.Error(), string(output))
+				log.Errorf("[%s] exec bash cmd error %s: %s", nodeName, err.Error(), output)
 				continue
 			}
-			log.Infof("[%s] %s", nodeName, string(output))
+			log.Infof("[%s] %s", nodeName, output)
 		}
 		return
 	}
@@ -108,7 +104,6 @@ func main() {
 			}
 
 			log.Infof("[%s] Starting Network weak", nodeName)
-
 			for {
 				select {
 				case <-ctx.Done():
@@ -122,25 +117,28 @@ func main() {
 						actualOption = util.GetRandomOption()
 					}
 
-					cmdStr := fmt.Sprintf("sudo mnexec -a %s tc qdisc replace dev %s-eth0 root netem %s", nodePid, nodeName, actualOption)
-					err = util.ExecBashCmd(cmdStr)
+					err, output := util.ExecReplaceCmd(nodePid, nodeName, actualOption)
 					if err != nil {
 						if ctx.Err() == context.Canceled || strings.Contains(err.Error(), "signal: interrupt") {
 							return
 						}
-						log.Errorf("[%s] %s", nodeName, err.Error())
+						log.Errorf("[%s] %s, output: %s", nodeName, err.Error(), output)
+					}
+
+					if len(output) > 0 {
+						log.Infof("[%s] %s", nodeName, output)
 					}
 
 					if log.GetLevel() == log.DebugLevel {
-						cmdStr = fmt.Sprintf("sudo mnexec -a %s tc qdisc show dev %s-eth0", nodePid, nodeName)
-						err = util.ExecBashCmd(cmdStr)
+						err, output = util.ExecShowCmd(nodePid, nodeName)
 						if err != nil {
 							log.Infof("[%s] Network weak stopping...", nodeName)
 							if ctx.Err() == context.Canceled || strings.Contains(err.Error(), "signal: interrupt") {
 								return
 							}
-							log.Errorf("[%s] %s", nodeName, err.Error())
+							log.Errorf("[%s] %s output: %s", nodeName, err.Error(), output)
 						}
+						log.Debugf("[%s] %s", nodeName, output)
 					}
 				}
 			}
