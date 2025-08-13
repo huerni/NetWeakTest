@@ -78,26 +78,27 @@ func GetPidWithNodeName2(nodeName string) (string, error) {
 }
 
 func GenNetemParam(option string) string {
+	rand.Seed(time.Now().UnixNano())
 	switch option {
 	case "limit":
 		return fmt.Sprintf("%s %d", option, rand.Intn(1000)+1) // 1~1000
 	case "delay":
-		ms := rand.Intn(150) + 1 // 1~500ms
-		return fmt.Sprintf("%s %dms 10ms", option, ms)
+		ms := rand.Intn(151) // 0~150ms
+		return fmt.Sprintf("%s %dms", option, ms)
 	case "loss":
-		percent := rand.Intn(5) + 1 // 1~100%
+		percent := rand.Intn(6) // 1~100%
 		return fmt.Sprintf("%s %d%%", option, percent)
 	case "corrupt":
-		percent := rand.Intn(10) + 1 // 1~10%
+		percent := rand.Intn(11) // 1~10%
 		return fmt.Sprintf("%s %d%%", option, percent)
 	case "duplicate":
-		percent := rand.Intn(10) + 1 // 1~10%
+		percent := rand.Intn(11) // 1~10%
 		return fmt.Sprintf("%s %d%%", option, percent)
 	case "reorder":
-		percent := rand.Intn(5) + 1 // 1~100%
+		percent := rand.Intn(6) // 1~100%
 		return fmt.Sprintf("%s %d%%", option, percent)
 	case "rate":
-		rates := []string{"1mbit", "5mbit", "10mbit", "100kbit"}
+		rates := []string{"0", "1mbit", "5mbit", "10mbit", "100kbit"}
 		return fmt.Sprintf("%s %s", option, rates[rand.Intn(len(rates))])
 	default:
 		log.Errorf("unknown option: %s", option)
@@ -107,17 +108,9 @@ func GenNetemParam(option string) string {
 }
 
 func GetRandomOption() string {
-	rand.Seed(time.Now().UnixNano())
-
 	options := []string{"limit", "delay", "loss", "rate", "reorder", "duplicate", "corrupt"}
-	n := len(options)
-	shuffled := make([]string, n)
-	copy(shuffled, options)
-	rand.Shuffle(n, func(i, j int) { shuffled[i], shuffled[j] = shuffled[j], shuffled[i] })
-	k := rand.Intn(n) + 1
-	selected := shuffled[:k]
 	var opts []string
-	for _, opt := range selected {
+	for _, opt := range options {
 		opts = append(opts, GenNetemParam(opt))
 	}
 
@@ -133,6 +126,11 @@ func ExecBashCmd(cmdStr string) (error, string) {
 	}
 
 	return nil, string(output)
+}
+
+func ExecAddCmd(nodePid string, nodeName string, actualOption string) (error, string) {
+	cmdStr := fmt.Sprintf("mnexec -a %s tc qdisc add dev %s-eth0 root netem %s", nodePid, nodeName, actualOption)
+	return ExecBashCmd(cmdStr)
 }
 
 func ExecReplaceCmd(nodePid string, nodeName string, actualOption string) (error, string) {

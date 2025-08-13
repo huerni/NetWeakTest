@@ -138,7 +138,7 @@ func main() {
 							}
 							log.Errorf("[%s] %s output: %s", nodeName, err.Error(), output)
 						}
-						log.Debugf("[%s] %s", output)
+						log.Debugf("[%s] %s", nodeName, output)
 					}
 				}
 			}
