@@ -77,53 +77,12 @@ func GetPidWithNodeName2(nodeName string) (string, error) {
 	return pid, nil
 }
 
-func GetPidWithNodeNames(ctx context.Context, nodeNames []string) (map[string]string, error) {
-	nodePidMap := make(map[string]string)
-	remaining := make(map[string]struct{})
-	for _, name := range nodeNames {
-		remaining[name] = struct{}{}
-	}
-
-	interval := 500 * time.Millisecond
-
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	for len(remaining) > 0 {
-		select {
-		case <-ctx.Done():
-			if ctx.Err() == context.DeadlineExceeded {
-				return nodePidMap, fmt.Errorf("timeout: not all node pids found")
-			}
-			return nil, fmt.Errorf("context cancelled")
-		case <-time.After(interval):
-			log.Debug("waiting for all nodes to start...")
-			for nodeName := range remaining {
-				cmdStr := fmt.Sprintf("ps -ef | grep 'mininet:%s' | grep -v grep | awk '{print $2}' | head -n 1", nodeName)
-				out, err := exec.Command("bash", "-c", cmdStr).Output()
-				if err != nil {
-					log.Errorf("pgrep error: %v, output: %s", err, string(out))
-					continue
-				}
-				pid := strings.TrimSpace(string(out))
-				if pid != "" {
-					log.Debugf("node: %s, pid: %s", nodeName, pid)
-					nodePidMap[nodeName] = pid
-					delete(remaining, nodeName)
-				}
-			}
-		}
-	}
-	log.Debug("all nodes to start...")
-	return nodePidMap, nil
-}
-
 func GenNetemParam(option string) string {
 	switch option {
 	case "limit":
 		return fmt.Sprintf("%s %d", option, rand.Intn(1000)+1) // 1~1000
 	case "delay":
-		ms := rand.Intn(500) + 1 // 1~500ms
+		ms := rand.Intn(150) + 1 // 1~500ms
 		return fmt.Sprintf("%s %dms 10ms", option, ms)
 	case "loss":
 		percent := rand.Intn(5) + 1 // 1~100%
@@ -165,18 +124,30 @@ func GetRandomOption() string {
 	return strings.Join(opts, " ")
 }
 
-func ExecBashCmd(cmdStr string) error {
+func ExecBashCmd(cmdStr string) (error, string) {
 	log.Debug("ExecBashCmd: ", cmdStr)
 	cmd := exec.Command("bash", "-c", cmdStr)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("exec bash cmd error %s: %s", err.Error(), string(output))
-	}
-	if len(output) > 0 {
-		log.Debug("exec bash cmd output: ", string(output))
+		return err, string(output)
 	}
 
-	return nil
+	return nil, string(output)
+}
+
+func ExecReplaceCmd(nodePid string, nodeName string, actualOption string) (error, string) {
+	cmdStr := fmt.Sprintf("mnexec -a %s tc qdisc replace dev %s-eth0 root netem %s", nodePid, nodeName, actualOption)
+	return ExecBashCmd(cmdStr)
+}
+
+func ExecDelCmd(nodePid string, nodeName string) (error, string) {
+	cmdStr := fmt.Sprintf("mnexec -a %s tc qdisc del dev %s-eth0", nodePid, nodeName)
+	return ExecBashCmd(cmdStr)
+}
+
+func ExecShowCmd(nodePid string, nodeName string) (error, string) {
+	cmdStr := fmt.Sprintf("mnexec -a %s tc qdisc show dev %s-eth0", nodePid, nodeName)
+	return ExecBashCmd(cmdStr)
 }
 
 func RunPty(args []string, done chan struct{}) {
